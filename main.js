@@ -72,8 +72,23 @@
   }
   // 作品頁只放圖片，不放文字
   function work(w) {
-    return `<div class="images">${w.圖片.map((s) => img(s, w.標題)).join("")}</div>`;
+    return `<div class="images">${w.圖片.map((s, k) => k === 0
+      ? `<img class="thumb" src="${esc(s)}" alt="${esc(w.標題)}" loading="eager" fetchpriority="high" decoding="async" data-src="${esc(s)}">`
+      : img(s, w.標題)).join("")}</div>`;
   }
+  // 提早下載大圖：滑鼠移到縮圖上、手指碰到縮圖、或按下去的那一刻就開始抓，不等動畫
+  const warmed = new Set();
+  function warm(i) {
+    const w = works[i];
+    if (!w || warmed.has(i)) return;
+    warmed.add(i);
+    const im = new Image();
+    im.src = w.圖片[0];
+  }
+  const warmFrom = (e) => { const el = e.target.closest && e.target.closest(".work"); if (el) warm(+el.dataset.i); };
+  document.addEventListener("mouseover", warmFrom);
+  document.addEventListener("touchstart", warmFrom, { passive: true });
+  document.addEventListener("mousedown", warmFrom);
   // Information 頁：每列左邊灰色小標、右邊內容
   const rich = (t) => esc(t)
     .replace(/\[([^\]]+)\]\((#w\d+)\)/g, '<a href="$2">$1</a>')
@@ -136,7 +151,9 @@
     const panel = $("panel");
     panel.classList.add("out");
     clearTimeout(timer);
-    timer = setTimeout(show, 260);
+    const next = location.hash.match(/^#w(\d+)$/);
+    if (next) warm(+next[1] - 1);
+    timer = setTimeout(show, 150);
   }
   // 右邊的大圖載入完成後淡入
   document.addEventListener("load", (e) => {
